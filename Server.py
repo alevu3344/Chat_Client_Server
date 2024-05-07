@@ -5,19 +5,19 @@ import threading
 def handle_client(client_socket, address):
     print(f"New connection from {address}")
 
-    # Ask for the user's name
-    while True:
-        client_socket.send("Enter your name: ".encode())
-        name = client_socket.recv(1024).decode()
+    # Receive the user's name from the client
 
-        # Check if the name is already in use
-        if name in clients.values():
-            client_socket.send("Name already in use. Please enter a different name.".encode())
-        else:
-            break
+    name = client_socket.recv(1024).decode("utf8")
 
-    # Add client name and socket to the dictionary
-    clients[client_socket] = name
+    # Check if the name is already in use
+    if name in clients.values():
+        client_socket.send("Name already in use. Please try a different name.".encode())
+        client_socket.close()
+        print(f"Connection with {address} closed")
+        return
+    else:
+        clients[client_socket] = name
+        print(f"{name} has joined the chat.")
 
     while True:
         try:
@@ -28,13 +28,13 @@ def handle_client(client_socket, address):
                 break
 
             # Print the received message along with the client name for debugging
-            print(f"{name} sent: {data.decode()}")
+            print(f"Received message from {name}: {data.decode('utf8')}")
 
             # Send the message to all connected clients except the sender
             for socket, client_name in list(clients.items()):  # Iterate over a copy of the dictionary
                 if socket != client_socket:  # Exclude the sender
                     try:
-                        socket.send((name + ": " + data.decode()).encode())  # Encode string to bytes before sending
+                        socket.send((name + ": " + data.decode("utf8")).encode("utf8"))  # Encode string to bytes before sending
                     except:
                         del clients[socket]
 
