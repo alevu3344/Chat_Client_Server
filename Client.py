@@ -4,6 +4,7 @@ from threading import Thread
 
 # Function to receive messages from the server
 def receive_messages():
+
     while True:
         try:
             # Receive msg from the server
@@ -11,6 +12,7 @@ def receive_messages():
             if not msg:
                 break
             msg_list.insert(tkt.END, msg)
+            print(msg)
         except Exception as e:
             print(f"Error while receiving messages: {e}")
             break
@@ -18,14 +20,18 @@ def receive_messages():
 # Function to send a message to the server
 def send_message():
     message = my_msg.get()
-    if message:
-        try:
+    my_msg.set("")  # Clear input field
+
+    if message != "{quit}":
+     
+            msg_list.insert(tkt.END, message)
+            print(message)
+            
             client_socket.send(bytes(message, "utf8"))
-            my_msg.set("Type your message here")
-        except Exception as e:
-            print(f"Error while sending message: {e}")
-
-
+            #print the message in the chat window
+    else:
+        client_socket.send(bytes("{quit}", "utf8"))
+        client_socket.close()
 
 def connect_to_server():
     host = host_entry.get()
@@ -39,21 +45,21 @@ def connect_to_server():
         print("Connected to the server")
 
         # Send user name to the server
-        client_socket.send(name.encode())
+        client_socket.send(name.encode("utf8"))
 
         # Start a thread to receive messages from the server
         receive_thread = Thread(target=receive_messages)
         receive_thread.start()
+    #if the connection is already established then do nothing
     except Exception as e:
         print(f"Error while connecting to the server: {e}")
-        root.destroy()
+        return
 
+# Function to quit the chat
 def quit_chat(event=None):
     my_msg.set("{quit}")
     send_message()
-
-# Create a TCP/IP socket
-client_socket = socket(AF_INET, SOCK_STREAM)
+    
 
 root = tkt.Tk()
 root.title("Chat_Laboratorio")
@@ -65,6 +71,8 @@ FONT_SIZE = 14
 # Create the Frame to contain messages
 messages_frame = tkt.Frame(root)
 messages_frame.pack(pady=10)
+
+
 
 my_msg = tkt.StringVar()
 my_msg.set("")
@@ -97,7 +105,9 @@ name_entry.pack()
 entry_label = tkt.Label(root, text="Message:", font=("Helvetica", FONT_SIZE))
 entry_label.pack()
 entry_field = tkt.Entry(root, textvariable=my_msg, font=("Helvetica", FONT_SIZE))
+# Bind the Enter key to send the message
 entry_field.bind("<Return>", send_message)
+
 entry_field.pack()
 
 # Buttons for Connect and Quit
@@ -114,4 +124,7 @@ quit_button.pack(side=tkt.RIGHT, padx=10)
 send_button = tkt.Button(button_frame, text="Send", command=send_message, font=("Helvetica", FONT_SIZE))
 send_button.pack(side=tkt.RIGHT, padx=10)
 
-root.mainloop()
+client_socket = socket(AF_INET, SOCK_STREAM)
+
+
+tkt.mainloop()
