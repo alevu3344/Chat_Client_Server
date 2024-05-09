@@ -1,130 +1,91 @@
-import tkinter as tkt
-from socket import AF_INET, socket, SOCK_STREAM
+import socket
 from threading import Thread
+import tkinter as tk
 
-# Function to receive messages from the server
-def receive_messages():
-
+def receive():
     while True:
         try:
-            # Receive msg from the server
-            msg = client_socket.recv(1024).decode("utf8")
-            if not msg:
-                break
-            msg_list.insert(tkt.END, msg)
-            print(msg)
-        except Exception as e:
-            print(f"Error while receiving messages: {e}")
+            msg = s.recv(1024).decode("utf8")
+            msg_list.insert(tk.END, msg)
+        except OSError:
             break
 
-# Function to send a message to the server
-def send_message():
-    message = my_msg.get()
-    my_msg.set("")  # Clear input field
-
-    if message != "{quit}":
-     
-            msg_list.insert(tkt.END, message)
-            print(message)
-            
-            client_socket.send(bytes(message, "utf8"))
-            #print the message in the chat window
-    else:
-        client_socket.send(bytes("{quit}", "utf8"))
-        client_socket.close()
-
 def connect_to_server():
+    global s
     host = host_entry.get()
     port = int(port_entry.get())
-    global name
     name = name_entry.get()
 
     try:
-        # Connect to the server
-        client_socket.connect((host, port))
-        print("Connected to the server")
-
-        # Send user name to the server
-        client_socket.send(name.encode("utf8"))
-
-        # Start a thread to receive messages from the server
-        receive_thread = Thread(target=receive_messages)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((host, port))
+        s.send(bytes(name, "utf8"))
+        connect_button.config(state=tk.DISABLED)
+        host_entry.config(state=tk.DISABLED)
+        port_entry.config(state=tk.DISABLED)
+        name_entry.config(state=tk.DISABLED)
+        receive_thread = Thread(target=receive)
         receive_thread.start()
-    #if the connection is already established then do nothing
     except Exception as e:
-        print(f"Error while connecting to the server: {e}")
-        return
+        msg_list.insert(tk.END, f"Failed to connect: {e}")
 
-# Function to quit the chat
-def quit_chat(event=None):
-    my_msg.set("{quit}")
-    send_message()
-    
+def send(event=None):
+    msg = my_msg.get()
+    my_msg.set("")
+    s.send(bytes(msg, "utf8"))
+    if msg.lower() == '/quit':
+        s.close()
+        window.quit()
 
-root = tkt.Tk()
-root.title("Chat_Laboratorio")
-root.geometry("800x800")  # Set window size
+def on_closing(event=None):
+    my_msg.set("/quit")
+    send()
 
-# Increase font size for all widgets
-FONT_SIZE = 14
+window = tk.Tk()
+window.title("Chat Application")
+window.configure(bg="#f0f0f0")
 
-# Create the Frame to contain messages
-messages_frame = tkt.Frame(root)
-messages_frame.pack(pady=10)
+message_frame = tk.Frame(window, height=400, width=600, bg='#ffffff')
+message_frame.pack(pady=10)
 
-
-
-my_msg = tkt.StringVar()
+my_msg = tk.StringVar()
 my_msg.set("")
-scrollbar = tkt.Scrollbar(messages_frame)
 
-msg_list = tkt.Listbox(messages_frame, height=15, width=50, yscrollcommand=scrollbar.set, font=("Helvetica", FONT_SIZE))
-scrollbar.pack(side=tkt.RIGHT, fill=tkt.Y)
-msg_list.pack(side=tkt.LEFT, fill=tkt.BOTH)
-scrollbar.config(command=msg_list.yview)
+scroll_bar = tk.Scrollbar(message_frame)
+msg_list = tk.Listbox(message_frame, height=15, width=70, bg="#ffffff", yscrollcommand=scroll_bar.set)
+scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
+msg_list.pack(side=tk.LEFT, fill=tk.BOTH)
+msg_list.pack()
 
-# Label and Entry for Host
-host_label = tkt.Label(root, text="Host:", font=("Helvetica", FONT_SIZE))
-host_label.pack()
-host_entry = tkt.Entry(root, font=("Helvetica", FONT_SIZE))
-host_entry.pack()
+entry_frame = tk.Frame(window, bg="#f0f0f0")
+entry_frame.pack(pady=5)
 
-# Label and Entry for Port
-port_label = tkt.Label(root, text="Port:", font=("Helvetica", FONT_SIZE))
-port_label.pack()
-port_entry = tkt.Entry(root, font=("Helvetica", FONT_SIZE))
-port_entry.pack()
+host_label = tk.Label(entry_frame, text="Host:", bg="#f0f0f0")
+host_label.grid(row=0, column=0, padx=5)
 
-# Label and Entry for User Name
-name_label = tkt.Label(root, text="User Name:", font=("Helvetica", FONT_SIZE))
-name_label.pack()
-name_entry = tkt.Entry(root, font=("Helvetica", FONT_SIZE))
-name_entry.pack()
+host_entry = tk.Entry(entry_frame)
+host_entry.grid(row=0, column=1, padx=5)
 
-# Label and Entry for Message
-entry_label = tkt.Label(root, text="Message:", font=("Helvetica", FONT_SIZE))
-entry_label.pack()
-entry_field = tkt.Entry(root, textvariable=my_msg, font=("Helvetica", FONT_SIZE))
-# Bind the Enter key to send the message
-entry_field.bind("<Return>", send_message)
+port_label = tk.Label(entry_frame, text="Port:", bg="#f0f0f0")
+port_label.grid(row=0, column=2, padx=5)
 
-entry_field.pack()
+port_entry = tk.Entry(entry_frame)
+port_entry.grid(row=0, column=3, padx=5)
 
-# Buttons for Connect and Quit
-button_frame = tkt.Frame(root)
-button_frame.pack(pady=10)
+name_label = tk.Label(entry_frame, text="Name:", bg="#f0f0f0")
+name_label.grid(row=0, column=4, padx=5)
 
-connect_button = tkt.Button(button_frame, text="Connect", command=connect_to_server, font=("Helvetica", FONT_SIZE))
-connect_button.pack(side=tkt.LEFT, padx=10)
+name_entry = tk.Entry(entry_frame)
+name_entry.grid(row=0, column=5, padx=5)
 
-quit_button = tkt.Button(button_frame, text="Quit", command=quit_chat, font=("Helvetica", FONT_SIZE))
-quit_button.pack(side=tkt.RIGHT, padx=10)
+connect_button = tk.Button(entry_frame, text="Connect", font=("Arial", 12), fg="white", bg="#007bff", command=connect_to_server)
+connect_button.grid(row=0, column=6, padx=5)
 
-# Send button
-send_button = tkt.Button(button_frame, text="Send", command=send_message, font=("Helvetica", FONT_SIZE))
-send_button.pack(side=tkt.RIGHT, padx=10)
+entry_field = tk.Entry(window, textvariable=my_msg, fg="black", width=50)
+entry_field.pack(pady=5)
+entry_field.bind("<Return>", send)
 
-client_socket = socket(AF_INET, SOCK_STREAM)
+send_button = tk.Button(window, text="Send", font=("Arial", 12), fg="white", bg="#007bff", command=send)
+send_button.pack(pady=5)
 
-
-tkt.mainloop()
+tk.mainloop()

@@ -1,80 +1,69 @@
-from socket import AF_INET, socket, SOCK_STREAM
+# importing required libraries.
+import socket
 from threading import Thread
 
+# define IP and port for server.
+host = "localhost"
+port = 8080
 
-#Accept incoming connections
-def accept_incoming_connections():
+clients = {}  # clients dict to store information about clients connection.
+
+# create socket object
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# set configuration so that many clients can request on one single port.
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+# bind the IP and port to the socket object.
+sock.bind((host, port))
+
+
+def handle_clients(conn):
+    name = conn.recv(1024).decode("utf8")
+    welcome = f"Welcome {name}. Good to see you :)"
+    conn.send(bytes(welcome, "utf8"))
+    msg = name + " has recently joined us"
+    broadcast(bytes(msg, "utf8"))
+
+    clients[conn] = name
+
     while True:
-        client, client_address = server_socket.accept()
-        print(f"{client_address} has connected.")
-        clients[client] = client_address
-        Thread(target=handle_client, args=(client,client_address)).start()
-
-
-# Function to handle a single client connection
-def handle_client(client_socket, address):
-    print(f"New connection from {address}")
-    # Receive the user's name from the client
-    name = client_socket.recv(1024).decode("utf8")
-    benvenuto = 'Benvenuto %s! Se vuoi lasciare la Chat, scrivi {quit} per uscire.' % name
-    client_socket.send(bytes(benvenuto, "utf8"))
-    msg = "%s si è unito all chat!" % name
-
-    #Send the message to all connected clients
-    for socket in clients:
-        socket.send(bytes(msg, "utf8"))
-    
-
-    while True:
-
-        # Receive the message from the client
-        msg = client_socket.recv(1024)
-        # Print the received message along with the client name for debugging
-        print(f"Received message from {name}: {msg.decode('utf8')}")
-
-        # If the message is {quit} then close the connection
-        if msg == bytes("{quit}", "utf8"):
-            client_socket.send(bytes("{quit}", "utf8"))
-            client_socket.close()
-            del clients[client_socket]
-            msg = f"{name} has left the chat!"
-            for client_socket in clients:
-                client_socket.send(msg)
-
-            print(f"{name} has left the chat")
-            break
+        msg = conn.recv(1024)
+        if msg != bytes("/quit", "utf8"):
+            broadcast(msg, name + ": ")
         else:
-            # Send the message to all connected clients
-            
-            for client_socket in clients:
-                client_socket.send(msg)
-
-    #Remove client from dictionary and close the connection
-    print(f"Connection with {name} ({address}) closed")
+            conn.send(bytes("/quit", "utf8"))
+            conn.close()
+            del clients[conn]
+            broadcast(bytes(f"{name} has left the chat room", "utf8"))
+            break
 
 
 
+# send the message to the all connected clients.
+def broadcast(msg, prefix=""):
+    for client in clients:  # clients is dict that save client's connection info
+        client.send(bytes(prefix, "utf8") + msg)
 
 
-# Server address and port
-SERVER_HOST = '127.0.0.1'
-SERVER_PORT = 5555
+def accept_client_connection():
+    while True:  # accept client's request
+        client_conn, client_address = sock.accept()  # accept client request
+        print(client_address, " has Connected")
 
-# Create a TCP/IP socket
-server_socket = socket(AF_INET, SOCK_STREAM)
+        # send a welcome message to the client and ask for name from it.
+        client_conn.send(bytes("Welcome to the chat room, Please type your name to continue", "utf8"))
+        clients[client_conn] = client_address
+        # start the handle clients function in a thread.
+        Thread(target=handle_clients, args=(client_conn,)).start()
 
-# Bind the socket to the address and port
-server_socket.bind((SERVER_HOST, SERVER_PORT))
-
-# Dictionary to store client sockets and their names
-clients = {}
 
 if __name__ == "__main__":
-    server_socket.listen(5)
-    print("In attesa di connessioni...")
-    ACCEPT_THREAD = Thread(target=accept_incoming_connections)
-    ACCEPT_THREAD.start()
-    ACCEPT_THREAD.join()
-    server_socket.close()
+    # server is listening........
+    sock.listen(5)  # here we are accepting max of three clients at once.
+    print("listening on port : ", port, "......")
 
+    # start the accept function into thread for handle multiple request at once.
+    t = Thread(target=accept_client_connection)
 
+    t.start()  # start thread
+    t.join()  # thread wait for main thread to exit.
+    sock.close()  # close the socket connection.
