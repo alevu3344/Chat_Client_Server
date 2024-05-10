@@ -1,6 +1,5 @@
 import socket
 from threading import Thread
-import threading
 import tkinter as tk
 import sys
 
@@ -18,9 +17,6 @@ def receive():
         except OSError:
             break
 
-
-
-
 def connect_to_server():
     global s, connected, receive_thread
     host = host_entry.get()
@@ -31,6 +27,7 @@ def connect_to_server():
     if not all([host, port, name]):
         msg_list.insert(tk.END, "Please fill in all fields.")
         return
+
     
     try:
         port = int(port)  # Convert port to int
@@ -41,6 +38,8 @@ def connect_to_server():
         host_entry.config(state=tk.DISABLED)
         port_entry.config(state=tk.DISABLED)
         name_entry.config(state=tk.DISABLED)
+        send_button.config(state=tk.NORMAL)
+        quit_button.config(state=tk.NORMAL)
         
         # Create a new receive_thread each time the client connects
         receive_thread = Thread(target=receive)
@@ -49,7 +48,6 @@ def connect_to_server():
 
     except Exception as e:
         msg_list.insert(tk.END, f"Failed to connect: {e}")
-
 
 def send(event=None):
     msg = my_msg.get()
@@ -65,6 +63,8 @@ def send(event=None):
 def quit_chat():
     global connected
     connected = False
+    quit_button.config(state=tk.DISABLED)
+    send_button.config(state=tk.DISABLED)
     my_msg.set("/quit")
     send()
 
@@ -124,9 +124,12 @@ entry_field.pack(pady=10)
 entry_field.bind("<Return>", send)
 
 send_button = tk.Button(window, text="Send", font=("Helvetica", 12), fg="white", bg="#007bff", command=send)
+#disable the send button until connected
+send_button.config(state=tk.DISABLED)
 send_button.pack(pady=5)
 
 quit_button = tk.Button(window, text="Quit", font=("Helvetica", 12), fg="white", bg="#ff0000", command=quit_chat)
+quit_button.config(state=tk.DISABLED)
 quit_button.pack(pady=5)
 
 window.protocol("WM_DELETE_WINDOW", on_closing)
