@@ -1,14 +1,7 @@
 import socket
 from threading import Thread
 import threading
-
-host = "localhost"
-port = 8080
-clients = {}
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-sock.bind((host, port))
-
+import argparse  # Importing argparse module for parsing command-line arguments
 
 def handle_client(conn, addr):
     try:
@@ -45,14 +38,12 @@ def handle_client(conn, addr):
                 thread.join()
                 break
 
-
 def broadcast(msg, prefix=""):
     for client in clients:
         try:
             client.send(bytes(prefix, "utf8") + msg)
         except Exception as e:
             print(f"Error broadcasting message to a client: {e}")
-
 
 def accept_client_connections():
     while True:
@@ -64,11 +55,23 @@ def accept_client_connections():
         except Exception as e:
             print(f"Error accepting client connection: {e}")
 
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Chat Server")
+    parser.add_argument("--host", type=str, default="localhost", help="Host address")
+    parser.add_argument("--port", type=int, default=8080, help="Port number")
+    args = parser.parse_args()
+
+    host = args.host
+    port = args.port
+
+    clients = {}
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind((host, port))
+
     try:
         sock.listen(5)
-        print("Listening on port:", port)
+        print(f"Listening on {host}:{port}")
         accept_thread = Thread(target=accept_client_connections)
         accept_thread.start()
         accept_thread.join()
