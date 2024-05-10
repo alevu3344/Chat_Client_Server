@@ -1,24 +1,39 @@
 import socket
 from threading import Thread
+import threading
 import tkinter as tk
+import sys
 
 connected = False
+receive_thread = None  # Initialize receive_thread globally
 
 def receive():
+    global receive_thread  # Declare receive_thread as global to modify it inside the function
     while True:
         try:
             msg = s.recv(1024).decode("utf8")
+            if not msg:  # Check if msg is empty, indicating the socket is closed
+                break
             msg_list.insert(tk.END, msg)
         except OSError:
             break
 
+
+
+
 def connect_to_server():
-    global s, connected
+    global s, connected, receive_thread
     host = host_entry.get()
-    port = int(port_entry.get())
+    port = port_entry.get()
     name = name_entry.get()
     
+    # Check if any of the fields are empty
+    if not all([host, port, name]):
+        msg_list.insert(tk.END, "Please fill in all fields.")
+        return
+    
     try:
+        port = int(port)  # Convert port to int
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((host, port))
         s.send(bytes(name, "utf8"))
@@ -26,12 +41,15 @@ def connect_to_server():
         host_entry.config(state=tk.DISABLED)
         port_entry.config(state=tk.DISABLED)
         name_entry.config(state=tk.DISABLED)
+        
+        # Create a new receive_thread each time the client connects
         receive_thread = Thread(target=receive)
         receive_thread.start()
         connected = True
 
     except Exception as e:
         msg_list.insert(tk.END, f"Failed to connect: {e}")
+
 
 def send(event=None):
     msg = my_msg.get()
@@ -51,10 +69,15 @@ def quit_chat():
     send()
 
 def on_closing(event=None):
-    global connected
+    global connected, receive_thread
     if connected:
         quit_chat()
     window.destroy()
+    # Stop the receive thread if it's running
+    if receive_thread.is_alive():
+        receive_thread.join(timeout=1)  # Wait for the thread to finish with a timeout
+    sys.exit()  # Exit the Python process
+
 
 window = tk.Tk()
 window.title("Chat Application")

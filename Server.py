@@ -1,69 +1,80 @@
-# importing required libraries.
 import socket
 from threading import Thread
+import threading
 
-# define IP and port for server.
 host = "localhost"
 port = 8080
-
-clients = {}  # clients dict to store information about clients connection.
-
-# create socket object
+clients = {}
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# set configuration so that many clients can request on one single port.
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-# bind the IP and port to the socket object.
 sock.bind((host, port))
 
 
-def handle_clients(conn):
-    name = conn.recv(1024).decode("utf8")
-    welcome = f"Welcome {name}. Good to see you :)"
-    conn.send(bytes(welcome, "utf8"))
-    msg = name + " has recently joined us"
-    broadcast(bytes(msg, "utf8"))
+def handle_client(conn, addr):
+    try:
+        name = conn.recv(1024).decode("utf8")
+        welcome = f"Welcome {name}. Good to see you :)"
+        conn.send(bytes(welcome, "utf8"))
+        msg = name + " has recently joined us"
+        broadcast(bytes(msg, "utf8"))
 
-    clients[conn] = name
+        clients[conn] = name
 
-    while True:
-        msg = conn.recv(1024)
-        if msg != bytes("/quit", "utf8"):
-            broadcast(msg, name + ": ")
-        else:
-            conn.send(bytes("/quit", "utf8"))
-            conn.close()
-            del clients[conn]
-            broadcast(bytes(f"{name} has left the chat room", "utf8"))
-            break
+        while True:
+            msg = conn.recv(1024)
+            if msg != bytes("/quit", "utf8"):
+                broadcast(msg, name + ": ")
+            else:
+                raise ConnectionError()
+    except ConnectionError:
+        conn.close()
+        del clients[conn]
+        broadcast(bytes(f"{name} has left the chat room", "utf8"))
+        print(f"{name} has left the chat room")
+    except Exception as e:
+        print(f"Error handling client {addr}: {e}")
+    finally:
+        # Terminate the receive thread associated with this client
+        for client_conn, client_name in list(clients.items()):
+            if client_name == name:
+                del clients[client_conn]
+                break
+        # Terminate the receive thread associated with this client
+        for thread in threading.enumerate():
+            if thread.name == f"Thread-{addr}":
+                thread.join()
+                break
 
 
-
-# send the message to the all connected clients.
 def broadcast(msg, prefix=""):
-    for client in clients:  # clients is dict that save client's connection info
-        client.send(bytes(prefix, "utf8") + msg)
+    for client in clients:
+        try:
+            client.send(bytes(prefix, "utf8") + msg)
+        except Exception as e:
+            print(f"Error broadcasting message to a client: {e}")
 
 
-def accept_client_connection():
-    while True:  # accept client's request
-        client_conn, client_address = sock.accept()  # accept client request
-        print(client_address, " has Connected")
-
-        # send a welcome message to the client and ask for name from it.
-        client_conn.send(bytes("Welcome to the chat room, Please type your name to continue", "utf8"))
-        clients[client_conn] = client_address
-        # start the handle clients function in a thread.
-        Thread(target=handle_clients, args=(client_conn,)).start()
+def accept_client_connections():
+    while True:
+        try:
+            client_conn, client_addr = sock.accept()
+            print(client_addr, " has Connected")
+            client_conn.send(bytes("Welcome to the chat room, Please type your name to continue", "utf8"))
+            clients[client_conn] = client_addr
+            Thread(target=handle_client, args=(client_conn, client_addr)).start()
+        except Exception as e:
+            print(f"Error accepting client connection: {e}")
 
 
 if __name__ == "__main__":
-    # server is listening........
-    sock.listen(5)  # here we are accepting max of three clients at once.
-    print("listening on port : ", port, "......")
-
-    # start the accept function into thread for handle multiple request at once.
-    t = Thread(target=accept_client_connection)
-
-    t.start()  # start thread
-    t.join()  # thread wait for main thread to exit.
-    sock.close()  # close the socket connection.
+    try:
+        sock.listen(5)
+        print("Listening on port:", port)
+        accept_thread = Thread(target=accept_client_connections)
+        accept_thread.start()
+        accept_thread.join()
+    except KeyboardInterrupt:
+        print("Server shutting down...")
+        for client_conn in clients:
+            client_conn.close()
+        sock.close()
