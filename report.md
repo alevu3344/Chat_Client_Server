@@ -4,7 +4,7 @@
 L'applicazione di chat client-server è un sistema di messaggistica in rete progettato per facilitare la comunicazione in tempo reale tra più client su una rete. Questo documento tecnico fornisce una panoramica dell'architettura del sistema, delle funzionalità e dei componenti principali.
 
 **2. Architettura del Sistema:**
-L'applicazione di chat client-server segue un modello architetturale client-server. È composta da due componenti principali:
+Il software segue un modello architetturale client-server. È composta da due componenti principali:
 
 - **Server:** Il componente server gestisce le connessioni dei client, la distribuzione dei messaggi e il coordinamento generale del sistema.
 - **Client:** Il componente client fornisce l'interfaccia utente per inviare e ricevere messaggi, oltre a gestire le connessioni al server.
@@ -31,5 +31,4 @@ Il sistema include meccanismi di gestione degli errori per garantire robustezza 
 - **Connessione Persa:** Sia il componente client che quello server rilevano e gestiscono situazioni in cui la connessione tra loro viene persa in modo imprevisto. Puliscono le risorse, notificano gli altri componenti e forniscono feedback agli utenti.
 - **Input Non Validi:** Il sistema convalida gli input degli utenti come l'indirizzo host, il numero di porta e il nome utente per evitare errori durante l'instaurazione della connessione.
 
-**6. Conclusione:**
-L'applicazione di chat client-server fornisce una piattaforma affidabile per la comunicazione in tempo reale tra più utenti. Seguendo un'architettura client-server, consente una distribuzione efficiente dei messaggi e gestisce scenari di errore in modo elegante per garantire un'esperienza utente senza interruzioni.
+
