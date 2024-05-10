@@ -34,7 +34,10 @@ Il sistema include meccanismi di gestione degli errori per garantire robustezza 
 ##### 5. Linee guida per l'esecuzione
 
 -**Server**:
-Il server 
+Il server va eseguito attraverso il comando "python Server.py --host host-address --port port-number" e può essere terminato attraverso il Keyboard Interrupt ALT+C da terminale. 
+
+-**Client**
+Il client non richiede argomenti da linea di comando, può essere eseguito attraverso il comando python Client.py, il quale rende visibile la GUI dove viene predisposto il necessario per stabilire la connessione con il server.
 
 
 
