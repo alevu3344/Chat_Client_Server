@@ -59,7 +59,6 @@ def accept_client_connections():
         try:
             client_conn, client_addr = sock.accept()
             print(client_addr, " has Connected")
-            client_conn.send(bytes("Welcome to the chat room, Please type your name to continue", "utf8"))
             clients[client_conn] = client_addr
             Thread(target=handle_client, args=(client_conn, client_addr)).start()
         except Exception as e:
